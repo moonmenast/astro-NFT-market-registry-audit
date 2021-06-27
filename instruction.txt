@@ -1,0 +1,11 @@
+1.RUn the "npm install" command first from the root directory
+Make sure to input your AST token address into the deploy.js file vairiable highlighed in a comment
+
+note: the current network is the BSCtest-net,change the default network to "BSCMain" when deploying on main-net in the hardhat.config file
+note: enter your private key into the privateKey variable in the hardhat.config.js file
+
+
+2. to deploy the current V1 version of market run "npx hardhat run scripts/deploy.js"
+3.At any point of time if you want to upgrade to a new smart contract, write the solidity contract into the MarketV2.sol file
+4.Run the "npx hardhat run scripts/upgrade.js
+5.Your data,balances and NFTs will persist through all upgraded smart contracts
