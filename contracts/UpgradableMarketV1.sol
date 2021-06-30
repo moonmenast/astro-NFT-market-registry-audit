@@ -1,3 +1,4 @@
+
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.6.0 <0.8.0;
 
@@ -10,8 +11,6 @@ import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol
 
 
 contract StarRegistryV1 is ERC721Upgradeable,OwnableUpgradeable,ReentrancyGuardUpgradeable{
-
-    address  public _owner;
 
     address public tokenAddress;
     
@@ -46,23 +45,28 @@ contract StarRegistryV1 is ERC721Upgradeable,OwnableUpgradeable,ReentrancyGuardU
         creatorCutAST = CCcut;
     }
 
+    function setOwner(address newOwner) public {
+        require(msg.sender == owner());
+        transferOwnership(newOwner);
+    }
+
     function setOwnerCut(uint256 ownerCutpercent) public{
-        require(msg.sender == _owner);
+        require(msg.sender == owner());
         ownerCutAST = ownerCutpercent;//percentage
     }
 
     function setCreatorCut(uint256 CreatorCutpercent) public{
-        require(msg.sender == _owner);
+        require(msg.sender == owner());
         creatorCutAST = CreatorCutpercent;
     }
 
     function approveMinter(address minter) public  {
-        require(msg.sender == _owner);
+        require(msg.sender == owner());
         approvedMinters[minter] = true;
     }
 
     function createNFT(uint256 price,string memory uri) public {
-        require(msg.sender==_owner || approvedMinters[msg.sender] == true,"Not approved Minter" );
+        require(msg.sender==owner() || approvedMinters[msg.sender] == true,"Not approved Minter" );
         uint256 id = totalSupply()+1;
         _safeMint(msg.sender, id);
         _setTokenURI(id,uri);
@@ -110,7 +114,7 @@ contract StarRegistryV1 is ERC721Upgradeable,OwnableUpgradeable,ReentrancyGuardU
         require(getSaleStatus(id)==true,"token not approved for sale on this market");
         uint256 Ocut = ceilDiv(tokenPriceinWEI[id]*ownerCutAST,100);
         uint256 Ccut = ceilDiv(tokenPriceinWEI[id]*creatorCutAST,100);
-        ApolloSpaceToken(tokenAddress).transferFrom(msg.sender,_owner,Ocut);
+        ApolloSpaceToken(tokenAddress).transferFrom(msg.sender,owner(),Ocut);
         ApolloSpaceToken(tokenAddress).transferFrom(msg.sender,tokenCreators[id],Ccut);
         ApolloSpaceToken(tokenAddress).transferFrom(msg.sender,ownerOf(id),tokenPriceinWEI[id]-Ocut-Ccut);
         IERC721Upgradeable(address(this)).safeTransferFrom(ownerOf(id),msg.sender,id);
@@ -122,14 +126,14 @@ contract StarRegistryV1 is ERC721Upgradeable,OwnableUpgradeable,ReentrancyGuardU
         require(msg.sender == ownerOf(id));
         uint256 Ocut = ceilDiv(tokenPriceinWEI[id]*ownerCutAST,100);
         uint256 Ccut = ceilDiv(tokenPriceinWEI[id]*creatorCutAST,100);
-        ApolloSpaceToken(tokenAddress).transferFrom(highestBidder[id],_owner,Ocut);
+        ApolloSpaceToken(tokenAddress).transferFrom(highestBidder[id],owner(),Ocut);
         ApolloSpaceToken(tokenAddress).transferFrom(highestBidder[id],tokenCreators[id],Ccut);
         ApolloSpaceToken(tokenAddress).transferFrom(highestBidder[id],ownerOf(id),tokenPriceinWEI[id]-Ocut-Ccut);
         safeTransferFrom(ownerOf(id), highestBidder[id],id);
     }
     
     function setBaseUri(string memory baseUri) public {
-        require(msg.sender == _owner);
+        require(msg.sender == owner());
         _setBaseURI(baseUri);
     }
 
