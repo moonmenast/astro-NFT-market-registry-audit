@@ -2,7 +2,7 @@
 pragma solidity >=0.6.0 <0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "./AST.sol";
 import "@openzeppelin/contracts-upgradeable/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
@@ -70,10 +70,17 @@ contract StarRegistryV1 is ERC721Upgradeable,OwnableUpgradeable,ReentrancyGuardU
         tokenCreators[id] = msg.sender;
         
     }
+
+    function getSaleStatus(uint256 id) public view returns (bool){
+        if(getApproved(id) == address(this)){
+            return true;
+        }else return false;
+    }
     
 
-    function bid(uint256 id,uint256 bidAmt) public {
-        require(IERC20Upgradeable(tokenAddress).balanceOf(msg.sender)>=bidAmt,"Low AST balance to bid");
+    function bid(uint256 id,uint256 bidAmt) public nonReentrant {
+        require(ApolloSpaceToken(tokenAddress).balanceOf(msg.sender)>=bidAmt,"Low AST balance to bid");
+        require(getSaleStatus(id)==true);
         require(now-createdTime[id] < bidTimeLimit[id],"Cannot Bid,Auction Time over");
         require(msg.sender != ownerOf(id),"Token owner cannot bid");
         if(bidAmt > highestCurrentBid[id]){
@@ -82,6 +89,12 @@ contract StarRegistryV1 is ERC721Upgradeable,OwnableUpgradeable,ReentrancyGuardU
         }else{
             revert();
         }
+    }
+
+    function setNewPrice(uint256 id,uint256 amt) public nonReentrant{
+        require(msg.sender == ownerOf(id));
+        require(!getSaleStatus(id));
+        tokenPriceinWEI[id] = amt;
     }
     
     function placeSellorder(uint256 id,uint256 timeInDays) public {
@@ -92,25 +105,26 @@ contract StarRegistryV1 is ERC721Upgradeable,OwnableUpgradeable,ReentrancyGuardU
         bidTimeLimit[id] = SafeMathUpgradeable.mul(timeInDays,86400);
     }
 
-    function buy(uint256 id) external {
+    function buy(uint256 id) external nonReentrant {
         require(_exists(id));
+        require(getSaleStatus(id)==true,"token not approved for sale on this market");
         uint256 Ocut = ceilDiv(tokenPriceinWEI[id]*ownerCutAST,100);
         uint256 Ccut = ceilDiv(tokenPriceinWEI[id]*creatorCutAST,100);
-        IERC20Upgradeable(tokenAddress).transferFrom(msg.sender,_owner,Ocut);
-        IERC20Upgradeable(tokenAddress).transferFrom(msg.sender,tokenCreators[id],Ccut);
-        IERC20Upgradeable(tokenAddress).transferFrom(msg.sender,ownerOf(id),tokenPriceinWEI[id]-Ocut-Ccut);
+        ApolloSpaceToken(tokenAddress).transferFrom(msg.sender,_owner,Ocut);
+        ApolloSpaceToken(tokenAddress).transferFrom(msg.sender,tokenCreators[id],Ccut);
+        ApolloSpaceToken(tokenAddress).transferFrom(msg.sender,ownerOf(id),tokenPriceinWEI[id]-Ocut-Ccut);
         IERC721Upgradeable(address(this)).safeTransferFrom(ownerOf(id),msg.sender,id);
 
     }
 
-    function acceptBid(uint256 id) external {
+    function acceptBid(uint256 id) external nonReentrant{
         require(now-createdTime[id]<bidTimeLimit[id],"cannot Accept bid,Time Limit over");
         require(msg.sender == ownerOf(id));
         uint256 Ocut = ceilDiv(tokenPriceinWEI[id]*ownerCutAST,100);
         uint256 Ccut = ceilDiv(tokenPriceinWEI[id]*creatorCutAST,100);
-        IERC20Upgradeable(tokenAddress).transferFrom(highestBidder[id],_owner,Ocut);
-        IERC20Upgradeable(tokenAddress).transferFrom(highestBidder[id],tokenCreators[id],Ccut);
-        IERC20Upgradeable(tokenAddress).transferFrom(highestBidder[id],ownerOf(id),tokenPriceinWEI[id]-Ocut-Ccut);
+        ApolloSpaceToken(tokenAddress).transferFrom(highestBidder[id],_owner,Ocut);
+        ApolloSpaceToken(tokenAddress).transferFrom(highestBidder[id],tokenCreators[id],Ccut);
+        ApolloSpaceToken(tokenAddress).transferFrom(highestBidder[id],ownerOf(id),tokenPriceinWEI[id]-Ocut-Ccut);
         safeTransferFrom(ownerOf(id), highestBidder[id],id);
     }
     
